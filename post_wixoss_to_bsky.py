@@ -41,18 +41,6 @@ tweet_text = tweet_text_tag.text.strip()
 tweet_link = tweet_link_tag['href']
 full_url = f"https://twitter.com{tweet_link}"
 
-# 初回なら記録して終了（投稿しない）
-if is_first_run:
-    print("初回起動：投稿は行わず記録だけ行います。")
-    with open(posted_url_path, "w") as f:
-        f.write(full_url)
-    exit()
-
-# 投稿済みならスキップ
-if full_url == last_posted_url:
-    print("新しいツイートはありません。")
-    exit()
-
 # BlueSkyログイン
 client = Client()
 client.login(bsky_handle, bsky_app_password)
@@ -75,6 +63,20 @@ for img_tag in tweet.select(".attachment.image img")[:4]:
 # 投稿作成
 post_text = f"[wixoss公式] {tweet_text}\n{full_url}"
 
+# 新しいツイートがなかった場合も最新ツイートをbskyにポストする
+if is_first_run or full_url == last_posted_url:
+    print("新しいツイートはありませんが、最新ツイートをbskyにポストします。")
+    if images:
+        client.send_images(text=post_text, images=images, image_alts=image_alts)
+        print("画像付きで投稿しました！")
+    else:
+        client.send_post(text=post_text)
+        print("テキストのみ投稿しました！")
+    with open(posted_url_path, "w") as f:
+        f.write(full_url)
+    exit()
+
+# 新しいツイートがあれば通常通りポスト
 if images:
     client.send_images(text=post_text, images=images, image_alts=image_alts)
     print("画像付きで投稿しました！")
