@@ -32,7 +32,7 @@ if not tweet:
     exit()
 
 tweet_text = tweet.select_one(".tweet-content").text.strip()
-tweet_link = tweet.select_one("a.tweet-link")["href"]
+tweet_link = tweet.select_one("a.tweet-link")['href']
 full_url = f"https://twitter.com{tweet_link}"
 
 # 初回なら記録して終了（投稿しない）
@@ -75,5 +75,4 @@ else:
 
 # 投稿記録
 with open(posted_url_path, "w") as f:
-    f.write(full_url)
-
+    f.write(full_url) 
