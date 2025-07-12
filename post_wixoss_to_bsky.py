@@ -28,7 +28,9 @@ soup = BeautifulSoup(res.text, "html.parser")
 tweet = soup.select_one(".timeline-item")
 
 if not tweet:
-    print("ツイートが見つかりませんでした。")
+    print("ツイートが見つかりませんでした。HTMLをdumpします。")
+    with open("nitter_debug.html", "w", encoding="utf-8") as f:
+        f.write(res.text)
     exit()
 
 tweet_text_tag = tweet.select_one(".tweet-content")
