@@ -12,10 +12,13 @@ nitter_base = "https://nitter.net"
 target_user = "wixoss_TCG"
 nitter_url = f"{nitter_base}/{target_user}"
 
-# 前回のURL読み込み
+# 投稿記録ファイル
 posted_url_path = "last_posted.txt"
 last_posted_url = None
-if os.path.exists(posted_url_path):
+
+# 初回判定（ファイルがない or 空）
+is_first_run = not os.path.exists(posted_url_path) or os.path.getsize(posted_url_path) == 0
+if not is_first_run:
     with open(posted_url_path, "r") as f:
         last_posted_url = f.read().strip()
 
@@ -31,6 +34,13 @@ if not tweet:
 tweet_text = tweet.select_one(".tweet-content").text.strip()
 tweet_link = tweet.select_one("a.tweet-link")["href"]
 full_url = f"https://twitter.com{tweet_link}"
+
+# 初回なら記録して終了（投稿しない）
+if is_first_run:
+    print("初回起動：投稿は行わず記録だけ行います。")
+    with open(posted_url_path, "w") as f:
+        f.write(full_url)
+    exit()
 
 # 投稿済みならスキップ
 if full_url == last_posted_url:
@@ -66,3 +76,4 @@ else:
 # 投稿記録
 with open(posted_url_path, "w") as f:
     f.write(full_url)
+
