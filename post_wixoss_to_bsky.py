@@ -31,8 +31,14 @@ if not tweet:
     print("ツイートが見つかりませんでした。")
     exit()
 
-tweet_text = tweet.select_one(".tweet-content").text.strip()
-tweet_link = tweet.select_one("a.tweet-link")['href']
+tweet_text_tag = tweet.select_one(".tweet-content")
+tweet_link_tag = tweet.select_one("a.tweet-link")
+if tweet_text_tag is None or tweet_link_tag is None or not tweet_link_tag.has_attr('href'):
+    print("ツイート内容またはリンクが取得できませんでした。")
+    exit()
+
+tweet_text = tweet_text_tag.text.strip()
+tweet_link = tweet_link_tag['href']
 full_url = f"https://twitter.com{tweet_link}"
 
 # 初回なら記録して終了（投稿しない）
@@ -53,21 +59,24 @@ client.login(bsky_handle, bsky_app_password)
 
 # 画像取得（最大4枚まで）
 images = []
+image_alts = []
 for img_tag in tweet.select(".attachment.image img")[:4]:
     img_src = img_tag.get("src")
-    if img_src:
-        img_url = nitter_base + img_src
+    if img_src and isinstance(img_src, str):
+        if img_src.startswith("http://") or img_src.startswith("https://"):
+            img_url = img_src
+        else:
+            img_url = nitter_base + img_src
         print(f"画像取得中: {img_url}")
         img_data = requests.get(img_url).content
-        uploaded = client.upload_blob(img_data, mime_type="image/jpeg")
-        images.append(uploaded)
+        images.append(img_data)
+        image_alts.append("")  # altテキストは空でOK
 
 # 投稿作成
 post_text = f"[wixoss公式] {tweet_text}\n{full_url}"
 
 if images:
-    embed = client.com.atproto.repo.upload_images(images)
-    client.send_post(text=post_text, embed=embed)
+    client.send_images(text=post_text, images=images, image_alts=image_alts)
     print("画像付きで投稿しました！")
 else:
     client.send_post(text=post_text)
