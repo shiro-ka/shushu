@@ -8,7 +8,7 @@ bsky_handle = os.environ["BSKY_HANDLE"]
 bsky_app_password = os.environ["BSKY_APP_PASSWORD"]
 
 # Nitter設定
-nitter_base = "https://nitter.poast.org"
+nitter_base = "https://nitter.net"
 target_user = "wixoss_TCG"
 nitter_url = f"{nitter_base}/{target_user}"
 
