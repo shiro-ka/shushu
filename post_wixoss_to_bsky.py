@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from bs4 import BeautifulSoup
 from atproto import Client
-import cloudscraper  # 追加
+import cloudscraper  # Cloudflare回避用
 
 # 環境変数
 bsky_handle = os.environ["BSKY_HANDLE"]
@@ -15,22 +15,21 @@ nitter_base = "https://nitter.poast.org"
 target_user = "wixoss_TCG"
 nitter_url = f"{nitter_base}/{target_user}"
 
-# cloudscraper のインスタンスを作成（UA偽装付き）
-scraper = cloudscraper.CloudScraper(
-    browser={ 
-        "custom": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-            "Accept": "text/html,application/xhtml+xml",
-        }
-    }
-)
+# cloudscraper のインスタンスを作成
+scraper = cloudscraper.CloudScraper()
+
+# UA偽装用ヘッダー
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    "Accept": "text/html,application/xhtml+xml",
+}
 
 # 現在時刻（JST）
 now = datetime.now(timezone.utc) + timedelta(hours=9)
 window_start = now - timedelta(hours=24)
 
-# ツイート取得（cloudscraper でリクエスト）
-res = scraper.get(nitter_url, timeout=10)
+# ツイート取得（cloudscraper でリクエスト｜ヘッダー偽装付き）
+res = scraper.get(nitter_url, headers=headers, timeout=10)
 soup = BeautifulSoup(res.text, "html.parser")
 tweets = soup.select(".timeline-item")
 
@@ -68,11 +67,11 @@ for tweet in tweets:
     images, alts = [], []
     for img_tag in tweet.select(".attachment.image img")[:4]:
         src = img_tag.get("src")
-        if not src: 
+        if not src:
             continue
         img_url = src if src.startswith("http") else nitter_base + src
         print(f"画像取得中: {img_url}")
-        img_data = scraper.get(img_url, timeout=10).content
+        img_data = scraper.get(img_url, headers=headers, timeout=10).content
         images.append(img_data)
         alts.append("")
 
