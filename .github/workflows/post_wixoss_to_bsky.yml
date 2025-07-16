@@ -29,9 +29,3 @@ jobs:
           BSKY_APP_PASSWORD: ${{ secrets.BSKY_APP_PASSWORD }}
         run: python post_wixoss_to_bsky.py
 
-        - name: Upload debug HTML
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: nitter-debug
-          path: nitter_debug.html
