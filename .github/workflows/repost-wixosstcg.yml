@@ -47,10 +47,15 @@ jobs:
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
-        git add projects/wixosstcg/last_tweet_id.json
-        git diff --quiet && git diff --staged --quiet || git commit -m "Update wixosstcg last tweet ID"
+        if [ -f projects/wixosstcg/last_tweet_id.json ]; then
+          git add projects/wixosstcg/last_tweet_id.json
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update wixosstcg last tweet ID"
+        else
+          echo "State file not created (script may have failed)"
+        fi
         
     - name: Push changes
+      if: success()
       uses: ad-m/github-push-action@master
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
