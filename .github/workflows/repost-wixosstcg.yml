@@ -8,6 +8,9 @@ on:
     - cron: '30 11 * * *'
   workflow_dispatch:  # 手動実行も可能にする
 
+permissions:
+  contents: write  # リポジトリへの書き込み権限を付与
+
 jobs:
   repost-wixosstcg:
     runs-on: ubuntu-latest
