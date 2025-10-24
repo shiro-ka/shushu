@@ -89,11 +89,12 @@ def create_bluesky_post(client, tweet, config):
         }]
     }]
     
-    # 画像の処理
+    # 画像の処理（Blueskyは最大4枚まで）
     images = []
     if 'includes' in tweet and 'media' in tweet['includes']:
+        photo_count = 0
         for media in tweet['includes']['media']:
-            if media['type'] == 'photo':
+            if media['type'] == 'photo' and photo_count < 4:
                 # 画像をダウンロード
                 img_response = requests.get(media['url'])
                 img_response.raise_for_status()
@@ -104,6 +105,12 @@ def create_bluesky_post(client, tweet, config):
                     'alt': '',
                     'image': upload.blob
                 })
+                photo_count += 1
+        
+        # 5枚以上ある場合は警告
+        total_photos = sum(1 for m in tweet['includes']['media'] if m['type'] == 'photo')
+        if total_photos > 4:
+            print(f"[{PROJECT_NAME}] 警告: {total_photos}枚の画像のうち、最初の4枚のみ投稿しました")
     
     # メイン投稿を作成
     embed = None
