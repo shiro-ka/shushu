@@ -1,4 +1,4 @@
-name: Repost Bot - wixosstcg
+name: wixosstcg
 
 on:
   schedule:
@@ -38,7 +38,8 @@ jobs:
         
     - name: Run repost script for wixosstcg
       env:
-        TWITTER_BEARER_TOKEN: ${{ secrets.TWITTER_BEARER_TOKEN }}
+        TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
+        TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
         SHUSHU_BLUESKY_HANDLE: ${{ secrets.SHUSHU_BLUESKY_HANDLE }}
         SHUSHU_BLUESKY_PASSWORD: ${{ secrets.SHUSHU_BLUESKY_PASSWORD }}
       run: python projects/wixosstcg/repost.py

@@ -8,7 +8,8 @@ from atproto import Client
 PROJECT_NAME = 'wixosstcg'
 
 # 環境変数から認証情報を取得
-TWITTER_BEARER_TOKEN = os.environ.get('TWITTER_BEARER_TOKEN')
+TWITTER_API_KEY = os.environ.get('TWITTER_API_KEY')
+TWITTER_API_SECRET = os.environ.get('TWITTER_API_SECRET')
 BLUESKY_HANDLE = os.environ.get('SHUSHU_BLUESKY_HANDLE')
 BLUESKY_PASSWORD = os.environ.get('SHUSHU_BLUESKY_PASSWORD')
 
@@ -41,11 +42,34 @@ def save_last_tweet_id(tweet_id):
             'last_updated': datetime.now(timezone.utc).isoformat()
         }, f, indent=2)
 
+def get_bearer_token():
+    """API KeyとSecretからBearer Tokenを取得"""
+    import base64
+    
+    # Basic認証用のクレデンシャルを作成
+    credentials = f"{TWITTER_API_KEY}:{TWITTER_API_SECRET}"
+    b64_credentials = base64.b64encode(credentials.encode()).decode()
+    
+    # Bearer Tokenを取得
+    url = 'https://api.twitter.com/oauth2/token'
+    headers = {
+        'Authorization': f'Basic {b64_credentials}',
+        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+    }
+    data = {'grant_type': 'client_credentials'}
+    
+    response = requests.post(url, headers=headers, data=data)
+    response.raise_for_status()
+    return response.json()['access_token']
+
 def get_twitter_timeline(username, since_id=None, max_results=10):
     """XのタイムラインをAPI v2で取得"""
+    # Bearer Tokenを取得
+    bearer_token = get_bearer_token()
+    
     # まずユーザーIDを取得
     user_url = f'https://api.twitter.com/2/users/by/username/{username}'
-    headers = {'Authorization': f'Bearer {TWITTER_BEARER_TOKEN}'}
+    headers = {'Authorization': f'Bearer {bearer_token}'}
     
     user_response = requests.get(user_url, headers=headers)
     user_response.raise_for_status()
