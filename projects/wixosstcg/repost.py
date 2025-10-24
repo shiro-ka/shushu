@@ -80,9 +80,10 @@ def get_twitter_timeline(username, since_id=None, max_results=10):
     url = f'https://api.twitter.com/2/users/{user_id}/tweets'
     params = {
         'max_results': max_results,
-        'tweet.fields': 'created_at,attachments',
+        'tweet.fields': 'created_at,attachments,referenced_tweets',
         'expansions': 'attachments.media_keys',
-        'media.fields': 'url,preview_image_url,type'
+        'media.fields': 'url,preview_image_url,type',
+        'exclude': 'retweets'  # リツイートを除外
     }
     
     if since_id:
