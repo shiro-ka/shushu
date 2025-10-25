@@ -125,14 +125,16 @@ def extract_links(text):
 
 def create_bluesky_post(client, tweet, config):
     """Blueskyに投稿を作成"""
-    # ヘッダー部分（リンク埋め込み）
+    # 元ツイートのリンク
+    tweet_link = f"https://twitter.com/{config['twitter_username']}/status/{tweet['id']}"
+    
+    # ヘッダー部分（元ツイートのリンク埋め込み）
     header_text = config['header_text']
-    header_link = config['header_link']
     
     # 本文
     full_text = f"{header_text}\n\n{tweet['text']}"
     
-    # ヘッダーのリンクファセットを作成
+    # ヘッダーに元ツイートのリンクを埋め込み
     facets = [{
         'index': {
             'byteStart': 0,
@@ -140,7 +142,7 @@ def create_bluesky_post(client, tweet, config):
         },
         'features': [{
             '$type': 'app.bsky.richtext.facet#link',
-            'uri': header_link
+            'uri': tweet_link
         }]
     }]
     
@@ -153,28 +155,37 @@ def create_bluesky_post(client, tweet, config):
         link['index']['byteEnd'] += header_offset
         facets.append(link)
     
-    # 画像の処理（Blueskyは最大4枚まで）
+    # 画像の処理（Blueskyは最大4枚まで）- このツイート専用の画像のみ
     images = []
-    if 'includes' in tweet and 'media' in tweet['includes']:
-        photo_count = 0
-        for media in tweet['includes']['media']:
-            if media['type'] == 'photo' and photo_count < 4:
-                # 画像をダウンロード
-                img_response = requests.get(media['url'])
-                img_response.raise_for_status()
-                
-                # Blueskyにアップロード
-                upload = client.upload_blob(img_response.content)
-                images.append({
-                    'alt': '',
-                    'image': upload.blob
-                })
-                photo_count += 1
+    if 'attachments' in tweet and 'media_keys' in tweet['attachments']:
+        tweet_media_keys = tweet['attachments']['media_keys']
         
-        # 5枚以上ある場合は警告
-        total_photos = sum(1 for m in tweet['includes']['media'] if m['type'] == 'photo')
-        if total_photos > 4:
-            print(f"[{PROJECT_NAME}] 警告: {total_photos}枚の画像のうち、最初の4枚のみ投稿しました")
+        if 'includes' in tweet and 'media' in tweet['includes']:
+            photo_count = 0
+            for media in tweet['includes']['media']:
+                # このツイートの画像のみを処理
+                if media.get('media_key') in tweet_media_keys and media['type'] == 'photo' and photo_count < 4:
+                    try:
+                        # 画像をダウンロード
+                        img_response = requests.get(media['url'])
+                        img_response.raise_for_status()
+                        
+                        # Blueskyにアップロード
+                        upload = client.upload_blob(img_response.content)
+                        images.append({
+                            'alt': '',
+                            'image': upload.blob
+                        })
+                        photo_count += 1
+                    except Exception as e:
+                        print(f"[{PROJECT_NAME}] 画像アップロードエラー: {e}")
+                        continue
+            
+            # 5枚以上ある場合は警告
+            total_photos = sum(1 for m in tweet['includes']['media'] 
+                             if m.get('media_key') in tweet_media_keys and m['type'] == 'photo')
+            if total_photos > 4:
+                print(f"[{PROJECT_NAME}] 警告: {total_photos}枚の画像のうち、最初の4枚のみ投稿しました")
     
     # メイン投稿を作成
     embed = None
@@ -188,16 +199,6 @@ def create_bluesky_post(client, tweet, config):
         text=full_text,
         facets=facets,
         embed=embed
-    )
-    
-    # 元ツイートのリンクをリプライとして投稿
-    tweet_link = f"https://twitter.com/{config['twitter_username']}/status/{tweet['id']}"
-    client.send_post(
-        text=tweet_link,
-        reply_to={
-            'root': {'uri': main_post.uri, 'cid': main_post.cid},
-            'parent': {'uri': main_post.uri, 'cid': main_post.cid}
-        }
     )
     
     print(f"Posted: {tweet['text'][:50]}...")
@@ -235,7 +236,7 @@ def main():
     # 古い順に処理するため逆順にする
     tweets.reverse()
     
-    # 画像情報を含める
+    # 画像情報を各ツイートに関連付ける
     includes = tweets_data.get('includes', {})
     for tweet in tweets:
         tweet['includes'] = includes
@@ -247,12 +248,16 @@ def main():
     client.login(BLUESKY_HANDLE, BLUESKY_PASSWORD)
     
     # 各ツイートを投稿
+    posted_count = 0
     for tweet in tweets:
         try:
             create_bluesky_post(client, tweet, config)
+            posted_count += 1
         except Exception as e:
             print(f"[{PROJECT_NAME}] 投稿エラー: {e}")
             continue
+    
+    print(f"[{PROJECT_NAME}] {posted_count}件の投稿が完了しました")
     
     # 最新のツイートIDを保存
     if tweets:
