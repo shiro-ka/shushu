@@ -93,6 +93,36 @@ def get_twitter_timeline(username, since_id=None, max_results=10):
     response.raise_for_status()
     return response.json()
 
+def extract_links(text):
+    """テキストからURLを抽出してファセット情報を作成"""
+    import re
+    
+    # URLパターン（http/https）
+    url_pattern = r'https?://[^\s]+'
+    links = []
+    
+    for match in re.finditer(url_pattern, text):
+        url = match.group()
+        start = match.start()
+        end = match.end()
+        
+        # バイト位置を計算
+        byte_start = len(text[:start].encode('utf-8'))
+        byte_end = len(text[:end].encode('utf-8'))
+        
+        links.append({
+            'index': {
+                'byteStart': byte_start,
+                'byteEnd': byte_end
+            },
+            'features': [{
+                '$type': 'app.bsky.richtext.facet#link',
+                'uri': url
+            }]
+        })
+    
+    return links
+
 def create_bluesky_post(client, tweet, config):
     """Blueskyに投稿を作成"""
     # ヘッダー部分（リンク埋め込み）
@@ -102,7 +132,7 @@ def create_bluesky_post(client, tweet, config):
     # 本文
     full_text = f"{header_text}\n\n{tweet['text']}"
     
-    # リンクのファセット（リッチテキスト）を作成
+    # ヘッダーのリンクファセットを作成
     facets = [{
         'index': {
             'byteStart': 0,
@@ -113,6 +143,15 @@ def create_bluesky_post(client, tweet, config):
             'uri': header_link
         }]
     }]
+    
+    # 本文中のリンクを抽出して追加
+    body_links = extract_links(tweet['text'])
+    for link in body_links:
+        # ヘッダー分のオフセットを加算
+        header_offset = len(f"{header_text}\n\n".encode('utf-8'))
+        link['index']['byteStart'] += header_offset
+        link['index']['byteEnd'] += header_offset
+        facets.append(link)
     
     # 画像の処理（Blueskyは最大4枚まで）
     images = []
