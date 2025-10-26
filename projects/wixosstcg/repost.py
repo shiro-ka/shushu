@@ -123,6 +123,20 @@ def extract_links(text):
     
     return links
 
+def clean_tweet_text(text):
+    """ツイートテキストから不要なt.coリンクを削除"""
+    import re
+    
+    # 末尾のt.coリンクを削除（画像URLなど）
+    # 例: "本文 https://t.co/xxxxx" → "本文"
+    text = re.sub(r'\s+https://t\.co/\w+\s*$', '', text)
+    
+    # 複数のt.coリンクが末尾にある場合も対応
+    while re.search(r'\s+https://t\.co/\w+\s*$', text):
+        text = re.sub(r'\s+https://t\.co/\w+\s*$', '', text)
+    
+    return text.strip()
+
 def create_bluesky_post(client, tweet, config):
     """Blueskyに投稿を作成"""
     # 元ツイートのリンク
@@ -131,8 +145,9 @@ def create_bluesky_post(client, tweet, config):
     # ヘッダー部分（元ツイートのリンク埋め込み）
     header_text = config['header_text']
     
-    # 本文
-    full_text = f"{header_text}\n\n{tweet['text']}"
+    # 本文（t.coリンクをクリーンアップ）
+    cleaned_text = clean_tweet_text(tweet['text'])
+    full_text = f"{header_text}\n\n{cleaned_text}"
     
     # ヘッダーに元ツイートのリンクを埋め込み
     facets = [{
@@ -146,14 +161,16 @@ def create_bluesky_post(client, tweet, config):
         }]
     }]
     
-    # 本文中のリンクを抽出して追加
-    body_links = extract_links(tweet['text'])
+    # 本文中のリンクを抽出して追加（t.co以外）
+    body_links = extract_links(cleaned_text)
     for link in body_links:
-        # ヘッダー分のオフセットを加算
-        header_offset = len(f"{header_text}\n\n".encode('utf-8'))
-        link['index']['byteStart'] += header_offset
-        link['index']['byteEnd'] += header_offset
-        facets.append(link)
+        # t.coリンクは除外
+        if 't.co/' not in link['features'][0]['uri']:
+            # ヘッダー分のオフセットを加算
+            header_offset = len(f"{header_text}\n\n".encode('utf-8'))
+            link['index']['byteStart'] += header_offset
+            link['index']['byteEnd'] += header_offset
+            facets.append(link)
     
     # 画像の処理（Blueskyは最大4枚まで）- このツイート専用の画像のみ
     images = []
@@ -201,7 +218,7 @@ def create_bluesky_post(client, tweet, config):
         embed=embed
     )
     
-    print(f"Posted: {tweet['text'][:50]}...")
+    print(f"Posted: {cleaned_text[:50]}...")
 
 def main():
     # 設定を読み込む
