@@ -2,8 +2,6 @@ name: wixosstcg
 
 on:
   schedule:
-    # 14:30 JST = 05:30 UTC
-    - cron: '30 5 * * *'
     # 20:30 JST = 11:30 UTC
     - cron: '30 11 * * *'
   workflow_dispatch:  # 手動実行も可能にする
